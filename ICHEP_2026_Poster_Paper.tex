@@ -1,0 +1,178 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{pos}
+\usepackage{siunitx}
+\RequirePackage{orcidlink}
+%
+\usepackage{lineno} % for line numbers
+\linenumbers % for line numbers
+%
+\title{Revolutionizing the CMS High-Level Trigger System at HL-LHC with Next Generation Triggers}
+
+\author[a]{Bruno Alves\orcidlink{0000-0001-9752-0624}\footnote{Copyright 2026 CERN for the benefit of the CMS Collaboration. Reproduction of this article or parts of it is allowed as specified in the CC-BY-4.0 license.}}
+
+\affiliation[a]{CERN, 1211 Geneva 23, Switzerland}
+
+\emailAdd{bruno.alves@cern.ch}
+
+\newcommand{\sm}{\ensuremath{\sim}}
+
+\abstract{\input{abstract.tex}}
+
+\FullConference{43rd International Conference on High Energy Physics (ICHEP 2026)\\
+30 July to 5 August, 2026\\
+Natal, Brazil\\}
+
+\begin{document}
+\maketitle
+
+\section{The NGT Scouting Stream at the HL-LHC}
+\label{intro}
+
+The CMS experiment at the LHC employs a two-tiered online selection system: the hardware-based Level-1 Trigger (L1T), operating within a \SI{12.5}{\micro\second} latency budget, and the software-based High-Level Trigger (HLT), with a \SI{1}{\second} latency allowance. Together, these systems reduce the \SI{40}{\mega\hertz} bunch-crossing rate to an affordable data-recording volume~\cite{cms}.
+To circumvent computing and storage bottlenecks, CMS pioneered \textit{data scouting}, which reconstructs events at the HLT level and outputs a streamlined, analysis-ready format without retaining raw detector data for full offline reconstruction~\cite{scout}. \par
+
+During the High-Luminosity LHC (HL-LHC) era, the instantaneous luminosity will reach \sm\SI{7.5e34}{\per\square\centi\meter\per\second}, resulting in an average pileup of 200 interactions per proton bunch-crossing and creating an unprecedentedly dense collision environment.
+The Next-Generation Triggers (NGT) project~\cite{ngt} addresses this processing challenge through a novel NGT Scouting stream (Fig.~\ref{fig:concept}) designed to process and record \emph{all} L1T-accepted events at a rate of \SI{750}{\kilo\hertz} using a compact, \texttt{NanoAOD}-like format.
+By comparison, the baseline HL-LHC scouting stream targets \SI{225}{\kilo\hertz}, whereas the standard HLT path records raw data at \sm\SI{15}{\kilo\hertz}~\cite{octdr}.
+Achieving the target \SI{750}{\kilo\hertz} rate requires several key technical advances: offloading HLT algorithms to GPUs (targeting 50\% in Run~4 and 80\% in Run~5)~\cite{hlttdr}, defining a tailored lightweight data structure, establishing real-time calibration workflows building on Run~3 demonstrators~\cite{demonstrator}, and delivering offline-quality physics object reconstruction. \par
+
+This work focuses on algorithmic advancements in HLT track reconstruction that allow NGT Scouting to approach offline-quality performance.
+Section~\ref{sec:track} details these tracking improvements, Section~\ref{sec:perf} evaluates their computational and physics performance, and Section~\ref{sec:conclusions} presents our conclusions.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.\textwidth]{ngtconcept}
+\caption{Simplified schematic overview of the trigger processing chain in CMS during Phase~2, from the collision rate at the HL-LHC with 200 PU to the final analysis step.
+  Both the HLT Standard and the NGT Scouting paths are shown, with current expected rates and throughput values.
+  The HLT Standard approach selects high-interest events at \sm\SI{15}{\kilo\hertz} and writes out the full detector raw data for later offline analysis.
+  The NGT Scouting path reconstructs all events accepted by the L1T at \SI{750}{\kilo\hertz}, with no additional filtering, and stores the events directly in a compact, analysis-ready \texttt{NanoAOD}-like data format.}
+\label{fig:concept}
+\end{figure}
+
+\section{The Extended Patatrack Pixel Tracking Algorithm}
+\label{sec:track}
+
+The CMS Phase~2 tracker contains \sm2.2~billion readout channels, representing a \sm16-fold increase over the Run~3 detector.
+Track reconstruction constitutes the primary computational bottleneck at the HLT, consuming over 40\% of the processing budget~\cite{trackerphase2}.
+The upgraded tracker comprises an Inner Tracker (IT) with four barrel pixel layers and twelve disks per endcap, alongside an Outer Tracker (OT) featuring macro-pixel-plus-strip (PS) and double-strip (2S) modules arranged in six barrel layers and five endcap disks. \par
+
+Full track reconstruction balances high efficiency, low fake rates, and low latency across three primary stages:
+\textit{seeding} (constructing short pixel-track candidates via the GPU-accelerated \textit{Patatrack} Cellular Automaton algorithm~\cite{patatrack}), \textit{building} (extending seeds into full tracks with OT hits using the Combinatorial Kalman Filter, CKF~\cite{ckf}), and \textit{fitting} (determining final track helix parameters).
+Optionally, fitted tracks can be selected using quality-based criteria, such as deep neural network (DNN) scores.
+We evaluate five tracking configurations, encompassing three baseline strategies and two optimized variants:
+
+\begin{itemize}
+\item \texttt{Legacy Full Tracks}: The reference sequence, which executes two sequential Cellular-Automaton-seeded iterations (IT-only quadruplets followed by triplets), with track building and fitting performed entirely by the CPU-based CKF. This configuration is purely sequential and runs exclusively on CPUs.
+\item \texttt{Baseline Full Tracks}: A heterogeneous single-iteration full-tracking sequence. Seeding uses pixel tracks generated by the GPU-friendly Patatrack algorithm, extended with hits from the first three OT barrel layers (PS modules) and requiring at least four total hits (with at least two in the IT). This extension eliminates the need for a second iteration. The seed collection is supplemented by the heterogeneous \textit{Line-Segment Tracking} (LST) algorithm, which incorporates OT-only seeds. Track building is performed using \textit{mkFit}, a CPU-parallel implementation of the CKF building step, followed by the standard CPU-based CKF fitter.
+\item \texttt{Baseline Pixel Tracks}: A single-iteration heterogeneous pixel-track reconstruction. This configuration bypasses separate seeding and CKF building stages: tracks are built directly by \textit{Patatrack}, extended with OT macro-pixel hits as described above, and fitted using the \textit{Broken-Line} algorithm. Extended pixel tracks are significantly faster to reconstruct than full tracks, making them a prime candidate for the NGT Scouting stream, albeit with a potential degradation in momentum resolution.
+\item \texttt{Improved Full Tracks}: The \texttt{Baseline Full Tracks} setup augmented with three key enhancements:
+  \textit{i)} retuned \textit{Patatrack} parameters to prioritize efficiency at the cost of a marginal increase in candidate track multiplicity;
+  \textit{ii)} refined duplicate-removal algorithms; and
+  \textit{iii)} a DNN selection step to remove fake tracks without compromising efficiency, leveraging CMS heterogeneous computing resources.
+\item \texttt{Improved Pixel Tracks}: The \texttt{Baseline Pixel Tracks} configuration enhanced with the same three algorithmic optimizations.
+\end{itemize}
+
+\noindent The following section evaluates the timing, memory usage, and physics performance of the configurations above. \par
+
+\section{Performance Results}
+\label{sec:perf}
+
+To assess computational feasibility, average per-event HLT processing times were benchmarked for the five tracking configurations in Section~\ref{sec:track} across CPU-only and CPU+GPU execution paths (Fig.~\ref{fig:timing}).
+The benchmarks used 900 simulated $t\bar{t}$ events at an average pileup of 200.
+ The L1-accepted fraction is 81.5\%, computed as the ratio between the number of events flagging at least one L1 seed and the total number of processed events.
+Before each measurement starts, the input files are read into memory and cached by the operating system to emulate data taking conditions.
+The measurement is run on a dedicated machine equipped with 2 CPU processors AMD EPYC 9534 for a total of 256 Cores (2 sockets × 64 physical cores × 2 logical cores).
+For heterogeneous workflows, we use one L40S GPU.
+The NVIDIA MPS service is used to share a GPU among multiple jobs more efficiently.
+We use a MPS fraction of 6\%. \par
+%
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.56\textwidth]{gpu-nvidia_bar_timing_hlt_summary_TTbar_OneFile}
+  \includegraphics[width=.43\textwidth]{ptres_vs_eta_Sigma}
+  \caption{
+    \textit{Left}: Per-module CPU+GPU average processing time comparing the four heterogeneous configurations and the \texttt{Legacy Full Tracks} configuration, which has no GPU implementation.
+    The measurements used $t\bar{t}$ events simulated at an average pileup of 200.
+    The CPU+GPU implementations provide \sm30\% speed-ups for all configurations.
+    Time differences between \texttt{Baseline} and \texttt{Improved} configurations lie below 1\%; the GPU implementation of the DNN inference layer does not significantly impact the timing.
+    Time differences between full track and pixel track configurations are \sm12\%, highlighting the speed-up from using extended pixel tracks.
+    \textit{Right}: $p_\mathrm{T}$ resolution as a function of $\eta$, for the five configurations covered in this work.
+    \texttt{Baseline Pixel Tracks} and \texttt{Improved Pixel Tracks} worsen the resolution across most of the spectrum, reaching a factor \sm2 at $\eta \sim 0$, due to missing hits relative to full tracks; \texttt{Improved Pixel Tracks} improves on \texttt{Baseline Pixel Tracks} by \sm20\%.
+    Taken from Ref.~\cite{brunodps}.
+  }
+  \label{fig:timing}
+\end{figure}
+
+Figure~\ref{fig:timing} (left) demonstrates that porting pixel tracking to GPUs via Patatrack yields a \sm30\% processing speedup for CPU+GPU workflows compared to CPU-only execution.
+Relying exclusively on extended pixel tracks makes \texttt{Baseline Pixel Tracks} and \texttt{Improved Pixel Tracks} approximately 12\% faster than their full-track counterparts.
+The algorithmic enhancements and GPU-based DNN inference layer in the \texttt{Improved} configurations introduce negligible (<1\%) timing overhead.
+Furthermore, GPU memory (VRAM) consumption drops by \sm30\% for pixel-track configurations relative to full tracking. \par
+
+Tracking efficiency is defined as the fraction of simulated hard-scattering tracks matched to a reconstructed track (requiring $>75\%$ shared hits), whereas the fake rate represents the proportion of unassociated reconstructed tracks.
+As shown in Fig.~\ref{fig:trackeff}, pixel tracks achieve reconstruction efficiencies comparable to full tracking.
+The retuned \textit{Patatrack} parameters and improved duplicate removal boost forward-region performance, yielding a \sm5\% overall efficiency gain.
+The DNN selection is the main responsible for the strong fake rate reduction, which reaches a factor of two in the barrel region at intermediate $p_\mathrm{T}$, while maintaining performance at low and high $p_\mathrm{T}$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.49\textwidth]{effic}
+\includegraphics[width=.49\textwidth]{fakerate}
+\caption{\textit{Left}: Tracking efficiency as a function of $\eta$ for the five configurations evaluated in this work.
+  \texttt{Improved Pixel Tracks} recovers the efficiency lost relative to \texttt{Baseline Pixel Tracks} and performs on par with (barrel) or slightly better than (endcaps, \sm5\%) the full track configurations.
+  \textit{Right}: Fake rate as a function of $\eta$ for the five configurations.
+  \texttt{Baseline Pixel Tracks} and \texttt{Improved Pixel Tracks} achieve up to $3\times$ lower fake rates in the barrel, but up to $5\times$ higher fake rates in the endcaps, compared to full track configurations.
+  Taken from Ref.~\cite{brunodps}.
+}
+\label{fig:trackeff}
+\end{figure}
+
+Figure~\ref{fig:timing} (right) illustrates the transverse momentum ($p_\mathrm{T}$) resolution, defined as the standard deviation of a Gaussian fit to the parameter response.
+Because pixel tracks utilize hits from only the first three OT barrel layers, their momentum resolution degrades by up to a factor of two at $\eta \sim 0$ relative to full tracks.
+However, \texttt{Improved Pixel Tracks} recovers \sm20\% of this resolution loss compared to the baseline.
+We also evaluate the transverse impact parameter resolution.
+The results for pixel tracks is \sm5\% worse than for full tracks in the barrel, better in the transition regions by up to \sm20\%, and worse in the endcaps by down to \sm10\%.
+Full tracks incorporate extended lever arms and displaced track seeds via LST, yielding superior resolution across the detector acceptance, particularly beyond the OT boundary ($|\eta| > 2.5$).
+\par
+%
+Finally, primary vertex (PV) efficiency was evaluated, defined as the fraction of simulated primary interaction vertices matched to a reconstructed vertex (categorized into leading and sub-leading vertices based on associated scalar track $\sum p_\mathrm{T}$).
+Pixel and full tracking configurations achieve comparable primary vertex reconstruction efficiencies.
+%
+\section{Conclusions}
+\label{sec:conclusions}
+%
+This contribution presented the NGT scouting strategy for the CMS High-Level Trigger during the HL-LHC era, outlining its technical challenges and novel algorithmic solutions.
+Specifically, significant advancements in online track and vertex reconstruction were demonstrated in terms of both computing throughput and physics performance.
+Extended pixel tracks deliver tracking efficiencies comparable to full track reconstruction while substantially reducing fake rates in the barrel region.
+Although extended pixel tracks currently exhibit lower transverse momentum resolution near $\eta \sim 0$, they offer a \sm12\% reduction in execution time and a \sm30\% reduction in GPU memory consumption.
+The three algorithmic enhancements here presented, namely the \textit{Patatrack} parameter retuning, the refined duplicate removal, and the DNN-based candidate selection, introduce negligible computational overhead while delivering notable physics performance gains.
+Given that track reconstruction remains the dominant contributor to HLT processing time, these optimizations offer crucial efficiency gains for Phase~2 trigger operations. \par
+
+The primary objective for CMS HL-LHC reconstruction is to achieve offline-grade performance within strict online execution budgets.
+The next two years will be crucial in validating the feasibility of the \SI{750}{\kilo\hertz} NGT scouting paradigm within the CMS trigger.
+Even if the bandwidth target proves to be too ambitious, the algorithmic innovations under development can readily be integrated into the standard HLT processing sequence or adapted for the baseline \SI{225}{\kilo\hertz} scouting stream~\cite{octdr}.
+Ultimately, the CMS online reconstruction chain, together with the relatively similar offline chain, will directly benefit from the improvements brought forward the NGT initiative.
+
+\begin{thebibliography}{99}
+\bibitem{cms}
+  The CMS Collaboration. ``The CMS Experiment at the CERN LHC''. In: JINST 3 (2008), S08004. DOI: \url{https://doi.org/10.1088/1748-0221/3/08/S08004}.
+\bibitem{scout}
+  The CMS Collaboration, ``Enriching the physics program of the CMS experiment via data scouting and data parking''. Physics Reports Volume 1115, 17 April 2025, Pages 678-772. \url{https://doi.org/10.1016/j.physrep.2024.09.006}
+\bibitem{ngt}
+  Next Generation Triggers. ``NGT Evaluation Report - 2025. CERN''. DOI: \url{https://doi.org/10.17181/dvqah-g0f70}
+\bibitem{octdr}
+  The CMS Collaboration, ``CMS Offline Software and Computing for HL-LHC, Conceptual Design Report''. \url{https://cds.cern.ch/record/2957472}  
+\bibitem{hlttdr}
+  The CMS Collaboration. ``The Phase-2 Upgrade of the CMS Data Acquisition and High Level Trigger''. \url{https://cds.cern.ch/record/2759072/}
+\bibitem{demonstrator}
+  The CMS Collaboration, ``Next Generation Triggers Demonstrator: Time Variation of the Calibrations and System Monitoring''. \url{https://cds.cern.ch/record/2950076}
+\bibitem{trackerphase2}
+  The CMS Collaboration, ``The Phase-2 Upgrade of the CMS Tracker''. \url{https://cds.cern.ch/record/2272264}
+\bibitem{ckf}
+  R. Mankel. ``A concurrent track evolution algorithm for pattern recognition in the HERA-B main tracking system''. Nucl. Instrum. Methods A395 (1997) 169. \url{https://doi.org/10.1016/S0168-9002(97)00705-5}
+\bibitem{brunodps}
+  The CMS Collaboration, ``Accelerated tracking for a high-throughput Phase-2 NGT HLT Scouting stream: Computing and Physics performance''. \url{https://cds.cern.ch/record/2967245}
+\bibitem{patatrack}
+  A. Bocci et al. ``Heterogeneous Reconstruction of Tracks and Primary Vertices With the CMS Pixel Tracker''. Frontiers in Big Data Volume 3 - 2020 (2020). ISSN: 2624-909X. DOI: \url{https://doi.org/10.3389/fdata.2020.601728}. url: \url{https://arxiv.org/abs/2008.13461}.
+\end{thebibliography}
+
+\end{document}
