@@ -6,7 +6,7 @@
 \usepackage{lineno} % for line numbers
 \linenumbers % for line numbers
 %
-\title{Physics objects validation at the High-Level Trigger reconstruction in CMS}
+\title{Validation of physics objects for the High-Level Trigger reconstruction in CMS}
 %
 \author[a]{Bruno Alves\orcidlink{0000-0001-9752-0624}\footnote{Copyright 2026 CERN for the benefit of the CMS Collaboration. Reproduction of this article or parts of it is allowed as specified in the CC-BY-4.0 license.}}
 %
@@ -28,11 +28,12 @@ Natal, Brazil\\}
 \section{The Status of the CMS Trigger System and NGT Scouting Validation Tools}
 \label{intro}
 %
-The CMS experiment at the LHC~\cite{cms} employs a two-tiered online selection system: the hardware-based Level-1 Trigger (L1T), operating within a \SI{12.5}{\micro\second} latency budget, and the software-based High-Level Trigger (HLT)~\cite{hlttdr}, with a \SI{1}{\second} latency allowance. Together, these systems reduce the \SI{40}{\mega\hertz} bunch-crossing rate to an affordable data-recording volume.
+The CMS experiment at the LHC~\cite{cms} employs a two-tiered online selection system: the hardware-based Level-1 Trigger (L1T), operating within a \SI{12.5}{\micro\second} latency budget, and the software-based High-Level Trigger (HLT)~\cite{hlttdr}, with a processing throughput constrained by the available compute resources, corresponding to an average event processing time of \SI{1}{\second}.
+Together, these systems reduce the \SI{40}{\mega\hertz} bunch-crossing rate to an affordable value.
 To circumvent computing and storage bottlenecks, CMS pioneered \textit{data scouting}, which reconstructs events at the HLT level and outputs a streamlined, analysis-ready format without retaining raw detector data for full offline reconstruction.
-To meet the demands of the High-Luminosity LHC (HL-LHC) era, the Next-Generation Triggers (NGT) project~\cite{ngt} expands this paradigm with a novel NGT Scouting stream (Fig.~\ref{fig:concept}) designed to process and record \emph{all} L1T-accepted events at a rate of \SI{750}{\kilo\hertz} in a compact, \texttt{NanoAOD}-like format, substantially exceeding the baseline HL-LHC scouting target of \SI{225}{\kilo\hertz} and the standard HLT raw-data rate of \sm\SI{15}{\kilo\hertz}~\cite{octdr}. \par
+To meet the demands of the High-Luminosity LHC (HL-LHC) era, the Next-Generation Triggers (NGT) project~\cite{ngt} aims to expand this paradigm with a novel NGT Scouting stream (Fig.~\ref{fig:concept}), designed to process and record \emph{all} L1T-accepted events at a rate of up to \SI{750}{\kilo\hertz} in a compact, \texttt{NanoAOD}-like format, substantially exceeding the baseline HL-LHC scouting target of \SI{225}{\kilo\hertz} and the standard HLT raw-data rate of \sm\SI{15}{\kilo\hertz}~\cite{octdr}. \par
 %
-Current validation tools available in CMS are scattered, occasionally outdated, and often incomplete.
+%Current validation tools available in CMS are scattered, occasionally outdated, and often incomplete.
 NGT and HLT upgrade efforts demand a reliable and comprehensive validation of physics objects.
 We aim to provide detailed monitoring of these HL-LHC developments by enabling systematic comparisons across CMS software releases, data conditions, algorithm versions, and algorithm configurations or tunings.
 Our tools, described in Section~\ref{sec:valid}, are fully integrated within the CMS software and are automated through its Data Quality Monitoring service.
@@ -41,7 +42,7 @@ These efforts can also often be generalized to offline objects, due to their str
 \begin{figure}[h]
 \centering
 \includegraphics[width=1.\textwidth]{ngtconcept}
-\caption{Simplified schematic overview of the trigger processing chain in CMS during Phase~2, from the collision rate at the HL-LHC with 200 pile-up to the final analysis step.
+\caption{Simplified schematic overview of the trigger processing chain in CMS during Phase~2, from the collision rate at the HL-LHC with an average pile-up of 200 to the final analysis step.
   Both the HLT Standard and the NGT Scouting paths are shown, with current expected rates and throughput values~\cite{octdr}.
   The HLT Standard approach selects high-interest events at \sm\SI{15}{\kilo\hertz} and writes out the full detector raw data for later offline analysis.
   The NGT Scouting path reconstructs all events accepted by the L1T at \SI{750}{\kilo\hertz}, with no additional filtering, and stores the events directly in a compact, analysis-ready \texttt{NanoAOD}-like data format.}
@@ -58,7 +59,7 @@ To quantitatively evaluate physics object performance, the following metrics are
 \textit{Response} is the ratio between reconstructed and simulated energy or momentum, and
 \textit{Resolution} is the standard deviation of the Gaussian curve fitting the response distribution. \par
 %
-A series of centralized validation tools have been recently developed at the HLT. 
+A series of centralized validation tools have been recently developed for the HLT. 
 \textbf{Particle Flow (PF) cluster} validation exploits hit-by-hit association logic between simulated truth and reconstructed information.
 Current efforts focus primarily on PF clusters in the Electromagnetic Calorimeter (ECAL) to compare the physics performance of several clustering algorithms designed for the HL-LHC.
 Custom ECAL event displays have been deployed to allow visual inspection of event topologies.
@@ -68,19 +69,20 @@ The framework establishes a robust association to reconstructed vertices via tun
 This approach offers a flexible efficiency estimate that can be customized to different phase-spaces or decay types.
 %
 \textbf{Jet and MET/MHT} validation is indispensable to compare performance across different detector regions, jet algorithms, and hyperparameter configurations.
-It has already been exploited to improve physics performance by identifying hidden pitfalls in new algorithms.
+It has already been exploited to improve physics performance by identifying hidden pitfalls in new algorithms, such as a technical issue related to the jet energy regression.
 %
 In \textbf{hadronic tau} validation, candidates are matched to generated visible taus using a spatial $\Delta \text{R}$ distance cut.
-The DeepTauID tau tagger effectively reduces fakes originating from jets, while fake mitigation from background leptons is currently being integrated into the HLT framework.
+The \texttt{DeepTauID} tau tagger effectively reduces fakes originating from jets, while fake mitigation from background leptons is currently being integrated into the HLT framework.
 %
 Finally, \textbf{pixel track} validation provides simulation truth for intermediate objects within the pixel tracking algorithm, enabling an in-depth analysis of the efficiency across all intermediate objects.
-This capability is especially relevant for Phase-2, where the number of tracking parameters grows into the hundreds.
+This capability is especially relevant for Phase-2, where the number of tracking parameters in the tracking algorithm grows into the hundreds.
 The framework is also being leveraged to evaluate electron reconstruction.
 %
 \section{Conclusions}
 \label{sec:conclusions}
 %
-We have developed essential validation tools tailored for monitoring Phase-2 detector and software upgrade efforts, which actively enable and motivate detailed performance studies and further algorithm developments. Work is currently ongoing to extend both the hadronic tau and MET/MHT validation frameworks. Looking forward, we plan to continue Particle Flow validation efforts by expanding to Hadronic Calorimeter (HCAL) clusters and eventually to full PF candidates. These ongoing and future efforts will benefit significantly from a comprehensive truth-graph, containing the full simulated event history, currently under development.
+We have developed essential validation tools tailored for monitoring Phase-2 detector and software upgrade efforts, which actively enable and motivate detailed performance studies and further algorithm developments. Work is currently ongoing to extend both the hadronic tau and MET/MHT validation frameworks. Looking forward, we plan to continue Particle Flow validation efforts by expanding to Hadronic Calorimeter (HCAL) clusters and eventually to full PF candidates.
+Finally, these efforts are expected to significantly benefit from the ongoing development of a comprehensive graph containing the full generated and simulated truth event history.
 %
 \begin{thebibliography}{99}
 \bibitem{cms}
