@@ -3,13 +3,13 @@
 \usepackage{siunitx}
 \RequirePackage{orcidlink}
 %
-\usepackage{lineno} % for line numbers
-\linenumbers % for line numbers
+%% \usepackage{lineno} % for line numbers
+%% \linenumbers % for line numbers
 %
 \title{Validation of physics objects for the High-Level Trigger reconstruction in CMS}
 %
-\author[a]{Bruno Alves\orcidlink{0000-0001-9752-0624}\footnote{Copyright 2026 CERN for the benefit of the CMS Collaboration. Reproduction of this article or parts of it is allowed as specified in the CC-BY-4.0 license.}}
-%
+\author[a]{Bruno Alves\orcidlink{0000-0001-9752-0624}}
+%\footnote{Copyright 2026 CERN for the benefit of the CMS Collaboration. Reproduction of this article or parts of it is allowed as specified in the CC-BY-4.0 license.}
 \affiliation[a]{CERN, 1211 Geneva 23, Switzerland}
 %
 \emailAdd{bruno.alves@cern.ch}
@@ -28,7 +28,7 @@ Natal, Brazil\\}
 \section{The Status of the CMS Trigger System and NGT Scouting Validation Tools}
 \label{intro}
 %
-The CMS experiment at the LHC~\cite{cms} employs a two-tiered online selection system: the hardware-based Level-1 Trigger (L1T), operating within a \SI{12.5}{\micro\second} latency budget, and the software-based High-Level Trigger (HLT)~\cite{hlttdr}, with a processing throughput constrained by the available compute resources, corresponding to an average event processing time of \SI{1}{\second}.
+The CMS experiment~\cite{cms,cmsrun3} at the LHC employs a two-tiered online selection system: the hardware-based Level-1 Trigger (L1T), operating within a \SI{12.5}{\micro\second} latency budget, and the software-based High-Level Trigger (HLT), with a processing throughput constrained by the available compute resources, corresponding to an average event processing time of \SI{1}{\second}.
 Together, these systems reduce the \SI{40}{\mega\hertz} bunch-crossing rate to an affordable value.
 To circumvent computing and storage bottlenecks, CMS pioneered \textit{data scouting}, which reconstructs events at the HLT level and outputs a streamlined, analysis-ready format without retaining raw detector data for full offline reconstruction.
 To meet the demands of the High-Luminosity LHC (HL-LHC) era, the Next-Generation Triggers (NGT) project~\cite{ngt} aims to expand this paradigm with a novel NGT Scouting stream (Fig.~\ref{fig:concept}), designed to process and record \emph{all} L1T-accepted events at a rate of up to \SI{750}{\kilo\hertz} in a compact, \texttt{NanoAOD}-like format, substantially exceeding the baseline HL-LHC scouting target of \SI{225}{\kilo\hertz} and the standard HLT raw-data rate of \sm\SI{15}{\kilo\hertz}~\cite{octdr}. \par
@@ -87,8 +87,10 @@ Finally, these efforts are expected to significantly benefit from the ongoing de
 \begin{thebibliography}{99}
 \bibitem{cms}
   The CMS Collaboration. ``The CMS Experiment at the CERN LHC''. In: JINST 3 (2008), S08004. DOI: \url{https://doi.org/10.1088/1748-0221/3/08/S08004}.
-\bibitem{hlttdr}
-  The CMS Collaboration. ``The Phase-2 Upgrade of the CMS Data Acquisition and High Level Trigger''. \url{https://cds.cern.ch/record/2759072/}.
+\bibitem{cmsrun3}
+  The CMS Collaboration. ``Development of the CMS detector for the CERN LHC Run 3''. In: JINST 19 (2024), P05064. DOI: \url{https://doi.org/10.1088/1748-0221/19/05/P05064}
+%% \bibitem{hlttdr}
+%%   The CMS Collaboration. ``The Phase-2 Upgrade of the CMS Data Acquisition and High Level Trigger''. \url{https://cds.cern.ch/record/2759072/}.
 \bibitem{ngt}
   Next Generation Triggers. ``NGT Evaluation Report - 2025. CERN''. DOI: \url{https://doi.org/10.17181/dvqah-g0f70}.
 \bibitem{octdr}
